@@ -25,5 +25,7 @@ typedef int16_t  sint16;
 typedef int32_t  sint32;
 typedef int64_t  sint64;
 
+typedef uint8	 RetVal;
+
 
 #endif /* INC_TYPES_H_ */

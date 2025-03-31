@@ -22,6 +22,7 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <types.h>
+#include <sys_clock.h>
 
 volatile uint32 u_counterTask1 = 0, u_counterTask2 = 0;
 
@@ -29,21 +30,26 @@ volatile uint32 u_counterTask1 = 0, u_counterTask2 = 0;
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
 
-void vCounterTask1(void *pvParameters) {
-    while (1) {
+void vCounterTask1(void *pvParameters)
+{
+    while (1)
+    {
     	u_counterTask1++;
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
-void vCounterTask2(void *pvParameters) {
-    while (1) {
-    u_counterTask2++;
+void vCounterTask2(void *pvParameters)
+{
+    while (1)
+    {
+    	u_counterTask2++;
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
 int main(void)
 {
+	Sys_v_FrequencyConfig(128u, 4u);
 	xTaskCreate(vCounterTask1, "Counter 1", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
 	xTaskCreate(vCounterTask2, "Counter 2", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
 	vTaskStartScheduler();

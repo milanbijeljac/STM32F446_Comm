@@ -1,9 +1,9 @@
 /* **************************************************
  *			    	INCLUDES					    *
  *************************************************  */
-#include <stm32f0xx_gpio_driver.h>
+#include <stm32f446_gpio_driver.h>
 #include <stm32f4xx.h>
-#include "../../CMSIS/Include/core_cm4.h"
+#include <core_cm4.h>
 
 /* **************************************************
  *					DEFINES 					    *

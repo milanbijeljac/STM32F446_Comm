@@ -103,9 +103,7 @@ RetVal Sys_v_FrequencyConfig(uint8 PLLN_Multiplication, uint8 PLLP_Division)
 
 			retVal = OK;
 		}
-
 	}
-
 	return retVal;
 }
 
@@ -125,7 +123,10 @@ static void Sys_v_SetAPBxFrequencyInRange(uint8 frequency)
 
 static void Sys_v_FlashLatency(uint8 frequency)
 {
-	uint32 latency = 0u;
+	uint32 latency = 0xDEADu;
+
+	FLASH->ACR &= ~(FLASH_ACR_LATENCY);
+
 	if(frequency <= 30u)
 	{
 		latency = FLASH_ACR_LATENCY_0WS;

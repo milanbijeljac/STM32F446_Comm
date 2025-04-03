@@ -30,7 +30,7 @@ volatile uint32 u_counterTask1 = 0, u_counterTask2 = 0;
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
 
-void vCounterTask1(void *pvParameters)
+void vTaskIdle(void *pvParameters)
 {
     while (1)
     {
@@ -38,7 +38,7 @@ void vCounterTask1(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
-void vCounterTask2(void *pvParameters)
+void vTaskCom(void *pvParameters)
 {
     while (1)
     {
@@ -49,9 +49,9 @@ void vCounterTask2(void *pvParameters)
 
 int main(void)
 {
-	Sys_v_FrequencyConfig(128u, 4u);
-	xTaskCreate(vCounterTask1, "Counter 1", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
-	xTaskCreate(vCounterTask2, "Counter 2", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
+	(void)Sys_v_FrequencyConfig(128u, 4u);
+	xTaskCreate(vTaskCom, "Com task", 128, NULL, configMAX_PRIORITIES - 1, NULL);
+	xTaskCreate(vTaskIdle, "Idle task ", 128, NULL, tskIDLE_PRIORITY, NULL);
 	vTaskStartScheduler();
     /* Loop forever */
 	for(;;);

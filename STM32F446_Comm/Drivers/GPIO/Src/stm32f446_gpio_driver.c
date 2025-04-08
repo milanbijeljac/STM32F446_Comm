@@ -334,14 +334,14 @@ void GPIOx_v_AlternateFunctionConfig(GPIO_TypeDef *pGPIOx, GPIO_PinConfig_t GPIO
 	if(GPIO_PinConfiguration.GPIO_PinNumber <= PIN_SEPARATION)
 	{
 		/* Perform clear bit operation */
-		pGPIOx->AFR[0] &= ~(CLEAR_4_BITS << (GPIO_PinConfiguration.GPIO_PinNumber * 2));
+		pGPIOx->AFR[0] &= ~(CLEAR_4_BITS << (GPIO_PinConfiguration.GPIO_PinNumber * 4));
 		pGPIOx->AFR[0] |= GPIO_PinConfiguration.GPIO_PinAltFunMode << (GPIO_PinConfiguration.GPIO_PinNumber * 4);
 
 	}
 	else if(GPIO_PinConfiguration.GPIO_PinNumber > PIN_SEPARATION)
 	{
 		/* Perform clear bit operation */
-		pGPIOx->AFR[1] &= ~(CLEAR_4_BITS << (GPIO_PinConfiguration.GPIO_PinNumber * 2));
+		pGPIOx->AFR[1] &= ~(CLEAR_4_BITS << (GPIO_PinConfiguration.GPIO_PinNumber * 4));
 		pGPIOx->AFR[1] |= GPIO_PinConfiguration.GPIO_PinAltFunMode << ((GPIO_PinConfiguration.GPIO_PinNumber - 8u) * 4);
 	}
 }

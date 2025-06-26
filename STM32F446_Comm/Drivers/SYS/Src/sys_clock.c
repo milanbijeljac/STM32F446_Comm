@@ -123,9 +123,11 @@ static void Sys_v_SetAPBxFrequencyInRange(uint8 frequency)
 
 static void Sys_v_FlashLatency(uint8 frequency)
 {
-	uint32 latency = 0xDEADu;
+	uint32 latency = 0xDEADDEADu;
 
 	FLASH->ACR &= ~(FLASH_ACR_LATENCY);
+
+	/* Reference Manual for STM32F446xx - Section 3.4.1 Relation between CPU clock frequency and Flash memory read time */
 
 	if(frequency <= 30u)
 	{

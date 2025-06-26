@@ -23,12 +23,36 @@
 #include <task.h>
 #include <types.h>
 #include <sys_clock.h>
+#include <stm32f446_gpio_driver.h>
+#include <stm32f446_can_driver.h>
 
 volatile uint32 u_counterTask1 = 0, u_counterTask2 = 0;
+static void GPIO_Config(void);
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
+
+static void GPIO_Config(void)
+{
+	GPIO_v_PeripheralClockControl(GPIOB, ENABLE);
+
+	GPIO_PinConfig_t GPIO_PinConfiguration;
+
+	GPIO_PinConfiguration.GPIO_PinNumber = 8u;
+	GPIO_PinConfiguration.GPIO_PinMode = ALTERNATE_FUNCTION_MODE;
+	GPIO_PinConfiguration.GPIO_PinAltFunMode = AF9;
+
+	GPIO_v_Init(GPIOB, GPIO_PinConfiguration);
+
+	GPIOx_v_GPIOCfgStructClear(&GPIO_PinConfiguration);
+
+	GPIO_PinConfiguration.GPIO_PinNumber = 9u;
+	GPIO_PinConfiguration.GPIO_PinMode = ALTERNATE_FUNCTION_MODE;
+	GPIO_PinConfiguration.GPIO_PinAltFunMode = AF9;
+
+	GPIO_v_Init(GPIOB, GPIO_PinConfiguration);
+}
 
 void vTaskIdle(void *pvParameters)
 {
@@ -38,18 +62,53 @@ void vTaskIdle(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
+
+CANx_IndetifierHandle_t CanHhdl;
+CANx_RecieveHandle_t CanHndlRecieve;
+uint8 u_sendDlc = 8;
+uint8 u_Data[8] = {1,2,3,4,5,6,7,8};
+uint8 u_retDlc[6];
+uint8 u_retData[48];
+uint8 size1, size2;
+uint8 i;
 void vTaskCom(void *pvParameters)
 {
+	u_counterTask2++;
+
+	CanHhdl.remoteTransmissionRequest = 0u;
+	CanHhdl.identifierExtension = 1u;
+	CanHhdl.identifier = 0x18AE2FE8;
+
     while (1)
     {
-    	u_counterTask2++;
-        vTaskDelay(pdMS_TO_TICKS(1000));
+
+    	CAN_u_TransmitMessage(CAN1, &CanHhdl, u_sendDlc, u_Data);
+    	CanHhdl.identifier = 0x18EAF2F1;
+    	u_Data[0] = 0xFF;
+    	u_Data[1] = 0xFF;
+    	u_Data[2] = 0xFF;
+    	u_Data[3] = 0xFF;
+    	u_Data[4] = 0xFF;
+    	u_Data[5] = 0xFF;
+    	u_sendDlc = 6;
+    	CAN_u_TransmitMessage(CAN1, &CanHhdl, u_sendDlc, u_Data);
+
+
+    	vTaskDelay(pdMS_TO_TICKS(100));
+    	for(i = 0; i < 2; i++)
+    	{
+    		CAN_u_RecieveMessage(CAN1, &CanHndlRecieve, &size1, &size2);
+    	}
+    	vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
 int main(void)
 {
 	(void)Sys_v_FrequencyConfig(128u, 4u);
+	GPIO_Config();
+	CAN_v_Init(CAN1);
+	CAN_v_FiltersInit(CAN1);
 	xTaskCreate(vTaskCom, "Com task", 128, NULL, configMAX_PRIORITIES - 1, NULL);
 	xTaskCreate(vTaskIdle, "Idle task ", 128, NULL, tskIDLE_PRIORITY, NULL);
 	vTaskStartScheduler();

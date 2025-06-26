@@ -48,6 +48,14 @@
 #define AF5 						5u
 #define AF6 						6u
 #define AF7 						7u
+#define AF8 						8u
+#define AF9 						9u
+#define AF10 						10u
+#define AF11 						11u
+#define AF12 						12u
+#define AF13 						13u
+#define AF14 						14u
+#define AF15 						15u
 
 /* Macros used for clearing bit fields */
 

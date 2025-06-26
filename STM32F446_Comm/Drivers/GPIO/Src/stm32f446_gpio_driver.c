@@ -325,7 +325,7 @@ void GPIOx_v_OutputConfig(GPIO_TypeDef *pGPIOx, GPIO_PinConfig_t GPIO_PinConfigu
 
 void GPIOx_v_AlternateFunctionConfig(GPIO_TypeDef *pGPIOx, GPIO_PinConfig_t GPIO_PinConfiguration)
 {
-	if(GPIO_PinConfiguration.GPIO_PinAltFunMode > AF7)
+	if(GPIO_PinConfiguration.GPIO_PinAltFunMode > AF15)
 	{
 		/* Error handling */
 		return;

@@ -65,15 +65,16 @@ void vTaskIdle(void *pvParameters)
 
 CANx_IndetifierHandle_t CanHhdl;
 CANx_RecieveHandle_t CanHndlRecieve;
-uint8 u_sendDlc = 8;
-uint8 u_Data[8] = {1,2,3,4,5,6,7,8};
+uint8 u_sendDlc;
+uint8 u_Data[8] = {};
 uint8 u_retDlc[6];
 uint8 u_retData[48];
 uint8 size1, size2;
 uint8 i;
 void vTaskCom(void *pvParameters)
 {
-	u_counterTask2++;
+
+	static uint8 j, k = 0, g;
 
 	CanHhdl.remoteTransmissionRequest = 0u;
 	CanHhdl.identifierExtension = 1u;
@@ -81,25 +82,31 @@ void vTaskCom(void *pvParameters)
 
     while (1)
     {
-
+    	if(k == 8)
+    	{
+    		k = 1;
+    	}
+    	else
+    	{
+    		k++;
+    	}
+    	u_sendDlc = k;
     	CAN_u_TransmitMessage(CAN1, &CanHhdl, u_sendDlc, u_Data);
     	CanHhdl.identifier = 0x18EAF2F1;
-    	u_Data[0] = 0xFF;
-    	u_Data[1] = 0xFF;
-    	u_Data[2] = 0xFF;
-    	u_Data[3] = 0xFF;
-    	u_Data[4] = 0xFF;
-    	u_Data[5] = 0xFF;
-    	u_sendDlc = 6;
+
+    	for(g = 0; g < k; g++)
+    	{
+    		u_Data[k] = j;
+    		j++;
+    	}
     	CAN_u_TransmitMessage(CAN1, &CanHhdl, u_sendDlc, u_Data);
 
-
-    	vTaskDelay(pdMS_TO_TICKS(100));
     	for(i = 0; i < 2; i++)
     	{
     		CAN_u_RecieveMessage(CAN1, &CanHndlRecieve, &size1, &size2);
     	}
-    	vTaskDelay(pdMS_TO_TICKS(200));
+    	vTaskDelay(pdMS_TO_TICKS(1000));
+    	u_counterTask2++;
     }
 }
 
@@ -109,8 +116,9 @@ int main(void)
 	GPIO_Config();
 	CAN_v_Init(CAN1);
 	CAN_v_FiltersInit(CAN1);
-	xTaskCreate(vTaskCom, "Com task", 128, NULL, configMAX_PRIORITIES - 1, NULL);
-	xTaskCreate(vTaskIdle, "Idle task ", 128, NULL, tskIDLE_PRIORITY, NULL);
+
+	xTaskCreate(vTaskCom, "Com task", 256, NULL, 0, NULL);
+	xTaskCreate(vTaskIdle, "Idle task ", 128, NULL, 2, NULL);
 	vTaskStartScheduler();
     /* Loop forever */
 	for(;;);

@@ -33,6 +33,15 @@ static void GPIO_Config(void);
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
 
+CANx_IndetifierHandle_t CanHhdl;
+CANx_RecieveHandle_t CanHndlRecieve;
+uint8 u_sendDlc;
+uint8 u_Data[8] = {};
+uint8 u_retDlc[6];
+uint8 u_retData[48];
+uint8 size1, size2;
+uint8 i;
+
 static void GPIO_Config(void)
 {
 	GPIO_v_PeripheralClockControl(GPIOB, ENABLE);
@@ -63,14 +72,14 @@ void vTaskIdle(void *pvParameters)
     }
 }
 
-CANx_IndetifierHandle_t CanHhdl;
-CANx_RecieveHandle_t CanHndlRecieve;
-uint8 u_sendDlc;
-uint8 u_Data[8] = {};
-uint8 u_retDlc[6];
-uint8 u_retData[48];
-uint8 size1, size2;
-uint8 i;
+void vTaskUart(void *pvParameters)
+{
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 void vTaskCom(void *pvParameters)
 {
 
@@ -116,9 +125,9 @@ int main(void)
 	GPIO_Config();
 	CAN_v_Init(CAN1);
 	CAN_v_FiltersInit(CAN1);
-
-	xTaskCreate(vTaskCom, "Com task", 256, NULL, 0, NULL);
-	xTaskCreate(vTaskIdle, "Idle task ", 128, NULL, 2, NULL);
+	xTaskCreate(vTaskCom, "Com task", 256, NULL, configMAX_PRIORITIES - 1, NULL);
+	xTaskCreate(vTaskUart, "UART task ", 256, NULL, configMAX_PRIORITIES - 2, NULL);
+	xTaskCreate(vTaskIdle, "Idle task ", 128, NULL, tskIDLE_PRIORITY, NULL);
 	vTaskStartScheduler();
     /* Loop forever */
 	for(;;);

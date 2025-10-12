@@ -72,7 +72,7 @@ void vTaskIdle(void *pvParameters)
     }
 }
 
-void vTaskUart(void *pvParameters)
+void vTaskUartRx(void *pvParameters)
 {
     while (1)
     {
@@ -80,7 +80,23 @@ void vTaskUart(void *pvParameters)
     }
 }
 
-void vTaskCom(void *pvParameters)
+void vTaskUartTx(void *pvParameters)
+{
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+void vTaskComRx(void *pvParameters)
+{
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+void vTaskComTx(void *pvParameters)
 {
 
 	static uint8 j, k = 0, g;
@@ -125,9 +141,11 @@ int main(void)
 	GPIO_Config();
 	CAN_v_Init(CAN1);
 	CAN_v_FiltersInit(CAN1);
-	xTaskCreate(vTaskCom, "Com task", 256, NULL, configMAX_PRIORITIES - 1, NULL);
-	xTaskCreate(vTaskUart, "UART task ", 256, NULL, configMAX_PRIORITIES - 2, NULL);
-	xTaskCreate(vTaskIdle, "Idle task ", 128, NULL, tskIDLE_PRIORITY, NULL);
+	xTaskCreate(vTaskComTx , "Com Tx task"   , 128, NULL, configMAX_PRIORITIES - 1, NULL);
+	xTaskCreate(vTaskComRx , "Com Rx task"   , 128, NULL, configMAX_PRIORITIES - 1, NULL);
+	xTaskCreate(vTaskUartTx, "UART Tx task " , 128, NULL, configMAX_PRIORITIES - 2, NULL);
+	xTaskCreate(vTaskUartRx, "UART Rx task " , 128, NULL, tskIDLE_PRIORITY + 1, NULL); /* Will be used only for configuration purposes where other tasks will be suspended */
+	xTaskCreate(vTaskIdle  , "Idle task "    , 128, NULL, tskIDLE_PRIORITY, NULL);
 	vTaskStartScheduler();
     /* Loop forever */
 	for(;;);

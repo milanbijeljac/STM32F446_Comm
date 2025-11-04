@@ -25,6 +25,7 @@
 #include <sys_clock.h>
 #include <stm32f446_gpio_driver.h>
 #include <stm32f446_can_driver.h>
+#include "uart_driver.h"
 
 volatile uint32 u_counterTask1 = 0, u_counterTask2 = 0;
 static void GPIO_Config(void);
@@ -44,6 +45,7 @@ uint8 i;
 
 static void GPIO_Config(void)
 {
+	/* CAN gpio init */
 	GPIO_v_PeripheralClockControl(GPIOB, ENABLE);
 
 	GPIO_PinConfig_t GPIO_PinConfiguration;
@@ -61,6 +63,31 @@ static void GPIO_Config(void)
 	GPIO_PinConfiguration.GPIO_PinAltFunMode = AF9;
 
 	GPIO_v_Init(GPIOB, GPIO_PinConfiguration);
+
+	/* UART configuration */
+	GPIO_v_PeripheralClockControl(GPIOA, ENABLE);
+	//GPIOx_v_GPIOCfgStructClear(&GPIO_PinConfiguration);
+
+	//GPIO_PinConfiguration.GPIO_PinNumber = 2u;
+	//GPIO_PinConfiguration.GPIO_PinMode = ALTERNATE_FUNCTION_MODE;
+	//GPIO_PinConfiguration.GPIO_PinAltFunMode = AF7;
+
+	//GPIO_v_Init(GPIOB, GPIO_PinConfiguration);
+
+	//GPIOx_v_GPIOCfgStructClear(&GPIO_PinConfiguration);
+
+	//GPIO_PinConfiguration.GPIO_PinNumber = 3u;
+	//GPIO_PinConfiguration.GPIO_PinMode = ALTERNATE_FUNCTION_MODE;
+	//GPIO_PinConfiguration.GPIO_PinAltFunMode = AF7;
+
+	//GPIO_v_Init(GPIOB, GPIO_PinConfiguration);
+
+    /* For some reason code above is not working, need to debug */
+   GPIOA->MODER &= ~((3 << (2 * 2)) | (3 << (3 * 2)));
+   GPIOA->MODER |=  (2 << (2 * 2)) | (2 << (3 * 2));
+
+   GPIOA->AFR[0] &= ~((0xF << (4 * 2)) | (0xF << (4 * 3)));
+   GPIOA->AFR[0] |=  (7 << (4 * 2)) | (7 << (4 * 3));
 }
 
 void vTaskIdle(void *pvParameters)
@@ -70,6 +97,8 @@ void vTaskIdle(void *pvParameters)
     	u_counterTask1++;
         vTaskDelay(pdMS_TO_TICKS(500));
     }
+
+    vTaskDelete(NULL);
 }
 
 void vTaskUartRx(void *pvParameters)
@@ -78,14 +107,19 @@ void vTaskUartRx(void *pvParameters)
     {
         vTaskDelay(pdMS_TO_TICKS(500));
     }
+
+    vTaskDelete(NULL);
 }
 
 void vTaskUartTx(void *pvParameters)
 {
     while (1)
     {
-        vTaskDelay(pdMS_TO_TICKS(500));
+    	UART_Write_Message("Firs message in cycle cycle cycle ...\n", 200);
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
+
+    vTaskDelete(NULL);
 }
 
 void vTaskComRx(void *pvParameters)
@@ -94,6 +128,8 @@ void vTaskComRx(void *pvParameters)
     {
         vTaskDelay(pdMS_TO_TICKS(500));
     }
+
+    vTaskDelete(NULL);
 }
 
 void vTaskComTx(void *pvParameters)
@@ -133,7 +169,10 @@ void vTaskComTx(void *pvParameters)
     	vTaskDelay(pdMS_TO_TICKS(1000));
     	u_counterTask2++;
     }
+
+    vTaskDelete(NULL);
 }
+
 
 int main(void)
 {
@@ -141,6 +180,7 @@ int main(void)
 	GPIO_Config();
 	CAN_v_Init(CAN1);
 	CAN_v_FiltersInit(CAN1);
+	UART_v_Init(SystemCoreClock, 115200);
 	xTaskCreate(vTaskComTx , "Com Tx task"   , 128, NULL, configMAX_PRIORITIES - 1, NULL);
 	xTaskCreate(vTaskComRx , "Com Rx task"   , 128, NULL, configMAX_PRIORITIES - 1, NULL);
 	xTaskCreate(vTaskUartTx, "UART Tx task " , 128, NULL, configMAX_PRIORITIES - 2, NULL);

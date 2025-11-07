@@ -70,7 +70,7 @@ void CAN_v_FiltersInit(CAN_TypeDef* CANx)
 }
 
 
-uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_IndetifierHandle_t* CANx_Handle, uint8 DLC, uint8* Data)
+uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle, uint8 DLC, uint8* Data)
 {
 	uint8 i = 0xFFu;
 	uint8 j;
@@ -87,13 +87,13 @@ uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_IndetifierHandle_t* CANx_Han
     {
 		i = 1;
     }
-	else if(CANx->TSR & (1u << CAN_TSR_TME1_Pos) )
+	else if(CANx->TSR & (1u << CAN_TSR_TME2_Pos) )
 	{
 		i = 2;
 	}
 	else
 	{
-		return NOK;
+
 	}
 
 	CAN1->sTxMailBox[i].TIR  = (uint32)0;
@@ -133,15 +133,14 @@ uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_IndetifierHandle_t* CANx_Han
 				u_shiftHigh+= 8u;
 			}
 		}
+		CANx->sTxMailBox[i].TIR |= CAN_TI0R_TXRQ;
 		retVal = OK;
 	}
-
-	CANx->sTxMailBox[i].TIR |= CAN_TI0R_TXRQ;
 
 	return retVal;
 }
 
-uint8 CAN_u_RecieveMessage(CAN_TypeDef* CANx, CANx_RecieveHandle_t* CANx_RecieveHandle, uint8* sizeOfFifo0, uint8* sizeOfFifo1)
+uint8 CAN_u_RecieveMessage(CAN_TypeDef* CANx, CANx_RxHandle_t* CANx_RecieveHandle, uint8* sizeOfFifo0, uint8* sizeOfFifo1)
 {
 	uint8  i, j;
 	uint8  u_retVal = NOK;

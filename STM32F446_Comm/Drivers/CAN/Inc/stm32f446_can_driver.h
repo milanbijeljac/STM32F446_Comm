@@ -17,20 +17,24 @@
  *			    GLOBAL VARIABLES 					*
  *************************************************  */
 
+/* Structure used for sending CAN messages */
 typedef struct
 {
-	uint32  remoteTransmissionRequest : 1 ;
-	uint32  identifierExtension       : 1 ;
-	uint32  identifier                 : 29;
-}CANx_IndetifierHandle_t;
+	uint32 identifier;					/** CAN ID */
+	uint8  remoteTransmissionRequest;	/** Data (0) or remote (1) frame */
+	uint8  identifierExtension;			/** Identifier extension for - CAN 2.0A or CAN 2.0B */
+	uint8  DLC;							/** Data length code */
+	uint8  Data[8];						/** Data to be sent */
 
+}CANx_TxHandle_t;
+
+/** Structure for receiving CAN messages */
 typedef struct
 {
-	uint32 canId[6];
-    uint8  Data[6][8];
-	uint8  DLC[6];
-	uint8  reserved[2];
-}CANx_RecieveHandle_t;
+	uint32 canId[6];	/** CAN ID */
+    uint8  Data[6][8];	/** Received data */
+	uint8  DLC[6];		/* Data length code */
+}CANx_RxHandle_t;
 
 /* **************************************************
  *			    FUNCTION PROTOTYPES					*
@@ -64,7 +68,7 @@ void CAN_v_FiltersInit(CAN_TypeDef* CANx);
  * \globals    - TODO
  *
  */
-uint8 CAN_u_RecieveMessage(CAN_TypeDef* CANx, CANx_RecieveHandle_t* CANx_RecieveHandle, uint8* sizeOfFifo0, uint8* sizeOfFifo1);
+uint8 CAN_u_RecieveMessage(CAN_TypeDef* CANx, CANx_RxHandle_t* CANx_RecieveHandle, uint8* sizeOfFifo0, uint8* sizeOfFifo1);
 
 /**
  *
@@ -74,6 +78,6 @@ uint8 CAN_u_RecieveMessage(CAN_TypeDef* CANx, CANx_RecieveHandle_t* CANx_Recieve
  * \globals    - TODO
  *
  */
-uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_IndetifierHandle_t* CANx_Handle, uint8 DLC, uint8* Data);
+uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle, uint8 DLC, uint8* Data);
 
 #endif /* CAN_INC_STM32F446_CAN_DRIVER_H_ */

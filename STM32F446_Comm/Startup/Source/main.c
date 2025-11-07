@@ -16,36 +16,87 @@
  ******************************************************************************
  */
 
+/* **************************************************
+ *			    	INCLUDES					    *
+ *************************************************  */
 #include <stdint.h>
+#include <limits.h>
 #include <FreeRTOSConfig.h>
 #include <stm32f4xx.h>
 #include <FreeRTOS.h>
 #include <task.h>
-#include <types.h>
-#include <sys_clock.h>
-#include <stm32f446_gpio_driver.h>
-#include <stm32f446_can_driver.h>
+#include <timers.h>
+#include "types.h"
+#include "sys_clock.h"
+#include "stm32f446_gpio_driver.h"
+#include "stm32f446_can_driver.h"
 #include "uart_driver.h"
+#include "Messages_Cfg.h"
 
-volatile uint32 u_counterTask1 = 0, u_counterTask2 = 0;
+/* **************************************************
+ *					DEFINES 					    *
+ *************************************************  */
+
+
+/* **************************************************
+ *			    FUNCTION PROTOTYPES					*
+ *************************************************  */
+/**
+ *
+ * \brief      - Function used for GPIO initialization (CAN and UART)
+ * \param[in]  - NONE
+ * \return     - NONE
+ * \globals    - NONE
+ *
+ */
 static void GPIO_Config(void);
+
+/**
+ *
+ * \brief      - Function used for timers initialization which are used for sending of CAN messages
+ * \param[in]  - NONE
+ * \return     - NONE
+ * \globals    - uint32 countFail - used to track failed initializations of counters
+ *
+ */
+static uint8 CAN_v_InitTimers(void);
+
+/**
+ *
+ * \brief      - Callback function - triggered when timer expires
+ * \param[in]  - TimerHandle_t xCanTImer
+ * \return     - NONE
+ * \globals    - askHandle_t canTxTaskHandle - handle of CAN TX task
+ *
+ */
+static void vCanTxTimerCallback (TimerHandle_t xCanTImer);
+
+/* **************************************************
+ *			    GLOBAL VARIABLES 					*
+ *************************************************  */
+
+/** Counters used to track how many times CAN_RX and CAN_TX tasks executed */
+volatile uint32 u_counterTask1 = 0, u_counterTask2 = 0;
+
+/** Counter that is used to track failed initializations of counter */
+uint8 countFail = 0u;
+/* Debug for now, return down */
+uint32 u_notifiedValue;
+
+TimerHandle_t xTimersCan[NUMBER_OF_MESSAGES];
+TaskHandle_t canTxTaskHandle;
+CANx_RxHandle_t CanHndlRecieve;
+extern Message_Cfg_t MessageCfg[5];
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
 
-CANx_IndetifierHandle_t CanHhdl;
-CANx_RecieveHandle_t CanHndlRecieve;
-uint8 u_sendDlc;
-uint8 u_Data[8] = {};
-uint8 u_retDlc[6];
-uint8 u_retData[48];
-uint8 size1, size2;
-uint8 i;
+/****************************************************/
 
 static void GPIO_Config(void)
 {
-	/* CAN gpio init */
+	/* CAN GPIO initialization */
 	GPIO_v_PeripheralClockControl(GPIOB, ENABLE);
 
 	GPIO_PinConfig_t GPIO_PinConfiguration;
@@ -64,7 +115,7 @@ static void GPIO_Config(void)
 
 	GPIO_v_Init(GPIOB, GPIO_PinConfiguration);
 
-	/* UART configuration */
+	/* UART GPIO initialization */
 	GPIO_v_PeripheralClockControl(GPIOA, ENABLE);
 	//GPIOx_v_GPIOCfgStructClear(&GPIO_PinConfiguration);
 
@@ -90,11 +141,44 @@ static void GPIO_Config(void)
    GPIOA->AFR[0] |=  (7 << (4 * 2)) | (7 << (4 * 3));
 }
 
+void vCanTxTimerCallback(TimerHandle_t xTimer)
+{
+    uint32 msgIndex = (uint32)pvTimerGetTimerID(xTimer);
+
+    /* Notify CAN TX task that timer expired, set corresponding bits to 1 */
+    /* configTASK_NOTIFICATION_ARRAY_ENTRIES is not configured (is 1, so there is no uint32 arr[x]), and we have one 32 bit value for 32 different evens for every task */
+    xTaskNotify(canTxTaskHandle, (1U << msgIndex), eSetBits);
+}
+static uint8 CAN_v_InitTimers(void)
+{
+	uint8  i;
+
+	/* Initialization of timers. For more information check FreeRTOS documentation */
+	for(i = 0; i < NUMBER_OF_MESSAGES; i++)
+	{
+		xTimersCan[i] = xTimerCreate("Can message timer", pdMS_TO_TICKS(MessageCfg[i].time), pdTRUE, (void*)i, vCanTxTimerCallback);
+		if(xTimersCan[i] == NULL)
+		{
+			countFail++;
+			return 1;
+		}
+		else
+		{
+			if(xTimerStart(xTimersCan[i], 0) != pdPASS)
+			{
+				countFail++;
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 void vTaskIdle(void *pvParameters)
 {
     while (1)
     {
-    	u_counterTask1++;
+
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 
@@ -115,7 +199,7 @@ void vTaskUartTx(void *pvParameters)
 {
     while (1)
     {
-    	UART_Write_Message("Firs message in cycle cycle cycle ...\n", 200);
+    	UART_Write_Message("First message in cycle cycle cycle ...\n", 200);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
@@ -124,9 +208,15 @@ void vTaskUartTx(void *pvParameters)
 
 void vTaskComRx(void *pvParameters)
 {
+	static uint8 size1, size2;
     while (1)
     {
-        vTaskDelay(pdMS_TO_TICKS(500));
+    	u_counterTask2++;
+    	/* TODO: Maybe it's better to check before what are the sizes of FIFO0 and FIFO1?
+    	 * What will happen if new message arrives in meantime? Check feasibility
+    	 */
+    	CAN_u_RecieveMessage(CAN1, &CanHndlRecieve, &size1, &size2);
+    	vTaskDelay(pdMS_TO_TICKS(200));
     }
 
     vTaskDelete(NULL);
@@ -134,40 +224,26 @@ void vTaskComRx(void *pvParameters)
 
 void vTaskComTx(void *pvParameters)
 {
+	uint8 retVal, i;
+	retVal = CAN_v_InitTimers();
 
-	static uint8 j, k = 0, g;
-
-	CanHhdl.remoteTransmissionRequest = 0u;
-	CanHhdl.identifierExtension = 1u;
-	CanHhdl.identifier = 0x18AE2FE8;
-
+	if(retVal != 0)
+	{
+		/* TODO: Perform reset, start initialization again */
+	}
     while (1)
     {
-    	if(k == 8)
-    	{
-    		k = 1;
-    	}
-    	else
-    	{
-    		k++;
-    	}
-    	u_sendDlc = k;
-    	CAN_u_TransmitMessage(CAN1, &CanHhdl, u_sendDlc, u_Data);
-    	CanHhdl.identifier = 0x18EAF2F1;
+    	u_counterTask1++;
 
-    	for(g = 0; g < k; g++)
+    	xTaskNotifyWait(0, ULONG_MAX, &u_notifiedValue, portMAX_DELAY);
+    	/* Check for events and send corresponding messages */
+    	for(i = 0; i < NUMBER_OF_MESSAGES; i++)
     	{
-    		u_Data[k] = j;
-    		j++;
+    		if(u_notifiedValue & (1u << i))
+    		{
+    			CAN_u_TransmitMessage(CAN1, &MessageCfg[i].CanTxHandle, MessageCfg[i].CanTxHandle.DLC, MessageCfg[i].CanTxHandle.Data);
+    		}
     	}
-    	CAN_u_TransmitMessage(CAN1, &CanHhdl, u_sendDlc, u_Data);
-
-    	for(i = 0; i < 2; i++)
-    	{
-    		CAN_u_RecieveMessage(CAN1, &CanHndlRecieve, &size1, &size2);
-    	}
-    	vTaskDelay(pdMS_TO_TICKS(1000));
-    	u_counterTask2++;
     }
 
     vTaskDelete(NULL);
@@ -181,7 +257,7 @@ int main(void)
 	CAN_v_Init(CAN1);
 	CAN_v_FiltersInit(CAN1);
 	UART_v_Init(SystemCoreClock, 115200);
-	xTaskCreate(vTaskComTx , "Com Tx task"   , 128, NULL, configMAX_PRIORITIES - 1, NULL);
+	xTaskCreate(vTaskComTx , "Com Tx task"   , 128, NULL, configMAX_PRIORITIES - 1, &canTxTaskHandle);
 	xTaskCreate(vTaskComRx , "Com Rx task"   , 128, NULL, configMAX_PRIORITIES - 1, NULL);
 	xTaskCreate(vTaskUartTx, "UART Tx task " , 128, NULL, configMAX_PRIORITIES - 2, NULL);
 	xTaskCreate(vTaskUartRx, "UART Rx task " , 128, NULL, tskIDLE_PRIORITY + 1, NULL); /* Will be used only for configuration purposes where other tasks will be suspended */

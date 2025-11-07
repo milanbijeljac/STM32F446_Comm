@@ -4,6 +4,7 @@
 
 #include <stm32f446xx.h>
 #include "uart_driver.h"
+
 /* **************************************************
  *					DEFINES 					    *
  *************************************************  */
@@ -14,7 +15,7 @@
 
 /**
  *
- * \brief      - Helper function used to sed one byte of data via direct interface to UART peripheral
+ * \brief      - Helper function used to send one byte of data via direct interface to UART peripheral
  * \param[in]  - char ch - one character
  * \return     - NONE
  *

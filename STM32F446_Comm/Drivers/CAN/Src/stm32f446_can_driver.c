@@ -4,6 +4,7 @@
 
 #include <stm32f446_can_driver.h>
 #include <stm32f4xx.h>
+#include <core_cm4.h>
 
 /* **************************************************
  *					DEFINES 					    *
@@ -43,6 +44,16 @@ void CAN_v_Init(CAN_TypeDef* CANx)
 	CANx->BTR &= ~CAN_BTR_SILM;
 	//CANx->MCR &= ~CAN_MCR_DBF; /* TODO: Configuration handling for debug mode */
 
+	/* Enable interrupt for CANx FIFO0 */
+	CANx->IER |= CAN_IER_FMPIE0_Msk;
+	NVIC_EnableIRQ(CAN1_RX0_IRQn);
+	NVIC_SetPriority(CAN1_RX0_IRQn, 5);
+
+	/* Enable interrupt for CANx FIFO1 */
+	CANx->IER |= CAN_IER_FMPIE1_Msk;
+	NVIC_EnableIRQ(CAN1_RX1_IRQn);
+	NVIC_SetPriority(CAN1_RX1_IRQn, 5);
+
 	/* Exit initialization mode */
 	CANx->MCR &= ~CAN_MCR_INRQ;
 	while(CANx->MSR & CAN_MSR_INAK); /* TODO: For now we're leaving init mode */
@@ -54,29 +65,34 @@ void CAN_v_FiltersInit(CAN_TypeDef* CANx)
 	/* Filter init mode */
 	CANx->FMR |= CAN_FMR_FINIT; // Enter filter init mode
 
-    /* Filter 1 activation */
-	CANx->FA1R |= CAN_FFA1R_FFA0;
-    CANx->FM1R &= ~(CAN_FM1R_FBM0_Msk);
-    CANx->FS1R |= CAN_FS1R_FSC0;
+    /* Filter 0 for FIFO0 */
+    CANx->FM1R &= ~(CAN_FM1R_FBM0_Msk);  /* Mask mode */
+    CANx->FS1R |= CAN_FS1R_FSC0;         /* 32-bit scale */
+    CANx->FFA1R &= ~(CAN_FFA1R_FFA0);    /* Assign to FIFO0 */
+    CANx->FA1R  |=  CAN_FFA1R_FFA0;      /* Activate filter 0 */
 
-    CANx->sFilterRegister[0].FR1 = 0x00000000;
-    CANx->sFilterRegister[0].FR2 = 0x00000000;
+    CANx->sFilterRegister[0].FR1 = ((0x00000000 << 3) | (1 << 2));  // IDE=1, RTR=0
+    CANx->sFilterRegister[0].FR2 = ((0x10000000 << 3));             // Mask bit28
 
-    /* Assign filter 0 to FIFO0 */
-    CANx->FFA1R &= ~(CAN_FFA1R_FFA0);
+    /* Filter 1 for FIFO1 */
+    CANx->FM1R &= ~(CAN_FM1R_FBM1_Msk);
+    CANx->FS1R |= CAN_FS1R_FSC1;
+    CANx->FFA1R |= CAN_FFA1R_FFA1;   /* Assign to FIFO1 */
+    CANx->FA1R  |= CAN_FFA1R_FFA1;   /* Activate filter 1 */
+
+    CANx->sFilterRegister[1].FR1 = ((0x10000000 << 3) | (1 << 2));  // IDE=1, RTR=0
+    CANx->sFilterRegister[1].FR2 = ((0x10000000 << 3));
 
     /* Exit filter init */
     CANx->FMR &= ~CAN_FMR_FINIT;
 }
 
-
-uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle, uint8 DLC, uint8* Data)
+void CAN_v_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle)
 {
 	uint8 i = 0xFFu;
 	uint8 j;
 	uint8 u_shiftLow = 0;
 	uint8 u_shiftHigh = 0;
-	uint8 retVal = NOK;
 
 	/* Check which mailbox is empty */
 	if( CANx->TSR & (1u << CAN_TSR_TME0_Pos) )
@@ -101,7 +117,7 @@ uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle, uin
 
 	CANx->sTxMailBox[i].TIR |= CANx_Handle->remoteTransmissionRequest << CAN_TI0R_RTR_Pos;
 	CANx->sTxMailBox[i].TIR |= CANx_Handle->identifierExtension << CAN_TI0R_IDE_Pos;
-	CANx->sTxMailBox[i].TDTR |= DLC << CAN_TDT0R_DLC_Pos;
+	CANx->sTxMailBox[i].TDTR |= CANx_Handle->DLC << CAN_TDT0R_DLC_Pos;
 
 	/* Check if it's CAN 2.0A or 2.0B ID */
 	if(CANx_Handle->identifierExtension == 0u)
@@ -120,121 +136,19 @@ uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle, uin
 	    CAN1->sTxMailBox[i].TDHR = (uint32)0;
 
 		/* Set data to empty mailbox */
-		for(j = 0; j < DLC; j++)
+		for(j = 0; j < CANx_Handle->DLC; j++)
 		{
 			if(j <= 3u)
 			{
-				CANx->sTxMailBox[i].TDLR |= Data[j] << u_shiftLow;
+				CANx->sTxMailBox[i].TDLR |= CANx_Handle->Data[j] << u_shiftLow;
 				u_shiftLow+= 8u;
 			}
 			else
 			{
-				CANx->sTxMailBox[i].TDHR |= Data[j] << u_shiftHigh;
+				CANx->sTxMailBox[i].TDHR |= CANx_Handle->Data[j] << u_shiftHigh;
 				u_shiftHigh+= 8u;
 			}
 		}
 		CANx->sTxMailBox[i].TIR |= CAN_TI0R_TXRQ;
-		retVal = OK;
 	}
-
-	return retVal;
-}
-
-uint8 CAN_u_RecieveMessage(CAN_TypeDef* CANx, CANx_RxHandle_t* CANx_RecieveHandle, uint8* sizeOfFifo0, uint8* sizeOfFifo1)
-{
-	uint8  i, j;
-	uint8  u_retVal = NOK;
-	uint32 u_recieveDataLow = 0;
-	uint32 u_recieveDataHigh = 0;
-
-	if( !(CANx->RF0R & CAN_RF0R_FMP0) && !(CANx->RF1R & CAN_RF1R_FMP1) )
-	{
-		return OK;
-	}   /* TODO: Remote frame handling. If this is scaled with CAN-FD and different STM32, no need for this kind of handling */
-
-	*sizeOfFifo0 = CANx->RF0R & 0x3u;
-	*sizeOfFifo1 = CANx->RF1R & 0x3u;
-
-	if(*sizeOfFifo0 == 0)
-	{
-		/* Skip FIFO1 */
-	}
-	else
-	{
-		for(i = 0; i < *sizeOfFifo0; i++)
-		{
-			/* Check if it's CAN 2.0A or 2.0B ID */
-			if( (CANx->sFIFOMailBox[0].RIR) & (CAN_RI0R_IDE_Msk) )
-			{
-				CANx_RecieveHandle->canId[i] = (CANx->sFIFOMailBox[0].RIR >> 3u) & 0x1FFFFFFF;
-			}
-			else
-			{
-				CANx_RecieveHandle->canId[i] = (CANx->sFIFOMailBox[0].RIR >> 21u) & 0x7FF;
-			}
-
-			CANx_RecieveHandle->DLC[i] = CANx->sFIFOMailBox[0].RDTR & 0xF;
-
-			u_recieveDataLow  = CANx->sFIFOMailBox[0].RDLR;
-			u_recieveDataHigh = CANx->sFIFOMailBox[0].RDHR;
-
-			for(j = 0; j < CANx_RecieveHandle->DLC[i]; j++)
-			{
-				if(j <= 3u)
-				{
-					CANx_RecieveHandle->Data[i][j] = (u_recieveDataLow >> (8 * j)) & 0xFFu;
-				}
-				else
-				{
-					CANx_RecieveHandle->Data[i][j] = (u_recieveDataHigh >> (8 * (j - 4))) & 0xFFu;
-				}
-			}
-			/* Release FIFO0 */
-			CANx->RF0R |= CAN_RF0R_RFOM0;
-		}
-
-	}
-
-	if(*sizeOfFifo1 == 0)
-	{
-		/* Skip FIFO1 */
-	}
-	else
-	{
-		for(i = 0; i < *sizeOfFifo1; i++)
-		{
-			/* Check if it's CAN 2.0A or 2.0B ID */
-			if( (CANx->sFIFOMailBox[1].RIR) & (CAN_RI1R_IDE_Msk) )
-			{
-				CANx_RecieveHandle->canId[i + 3] = (CANx->sFIFOMailBox[0].RIR >> 3u) & 0x1FFFFFF;
-			}
-			else
-			{
-				CANx_RecieveHandle->canId[i + 3] = (CANx->sFIFOMailBox[0].RIR >> 21u) & 0x7FF;
-			}
-
-			CANx_RecieveHandle->DLC[i + 3] = CANx->sFIFOMailBox[1].RDTR & 0xF;
-
-			u_recieveDataLow  = CANx->sFIFOMailBox[1].RDLR;
-			u_recieveDataHigh = CANx->sFIFOMailBox[1].RDHR;
-
-			for(j = 0; j < CANx_RecieveHandle->DLC[i + 3]; j++)
-			{
-				if(j <= 3u)
-				{
-					CANx_RecieveHandle->Data[i+3][j] = (u_recieveDataLow >> (8 * j)) & 0xFFu;
-				}
-				else
-				{
-					CANx_RecieveHandle->Data[i+3][j] = (u_recieveDataHigh >> (8 * (j - 4))) & 0xFFu;
-				}
-			}
-			/* Release FIFO1 */
-			CANx->RF0R |= CAN_RF1R_RFOM1;
-		}
-
-	}
-	u_retVal = OK;
-
-	return u_retVal;
 }

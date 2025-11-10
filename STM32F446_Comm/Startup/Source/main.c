@@ -78,15 +78,15 @@ static void vCanTxTimerCallback (TimerHandle_t xCanTImer);
 /** Counters used to track how many times CAN_RX and CAN_TX tasks executed */
 volatile uint32 u_counterTask1 = 0, u_counterTask2 = 0;
 
-/** Counter that is used to track failed initializations of counter */
+/** Counter that is used to track failed initializations of timers */
 uint8 countFail = 0u;
-/* Debug for now, return down */
-uint32 u_notifiedValue;
 
 TimerHandle_t xTimersCan[NUMBER_OF_MESSAGES];
 TaskHandle_t canTxTaskHandle;
-CANx_RxHandle_t CanHndlRecieve;
+
 extern Message_Cfg_t MessageCfg[5];
+/* TODO: Clean -  Test variables */
+uint32 counterFull, counterOverrun;
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
@@ -156,7 +156,7 @@ static uint8 CAN_v_InitTimers(void)
 	/* Initialization of timers. For more information check FreeRTOS documentation */
 	for(i = 0; i < NUMBER_OF_MESSAGES; i++)
 	{
-		xTimersCan[i] = xTimerCreate("Can message timer", pdMS_TO_TICKS(MessageCfg[i].time), pdTRUE, (void*)i, vCanTxTimerCallback);
+		xTimersCan[i] = xTimerCreate("CAN message timer", pdMS_TO_TICKS(MessageCfg[i].time), pdTRUE, (void*)i, vCanTxTimerCallback);
 		if(xTimersCan[i] == NULL)
 		{
 			countFail++;
@@ -208,15 +208,17 @@ void vTaskUartTx(void *pvParameters)
 
 void vTaskComRx(void *pvParameters)
 {
-	static uint8 size1, size2;
+	/* TODO: Clean - test Variables */
+	uint8 num1, num2;
     while (1)
     {
-    	u_counterTask2++;
-    	/* TODO: Maybe it's better to check before what are the sizes of FIFO0 and FIFO1?
-    	 * What will happen if new message arrives in meantime? Check feasibility
-    	 */
-    	CAN_u_RecieveMessage(CAN1, &CanHndlRecieve, &size1, &size2);
-    	vTaskDelay(pdMS_TO_TICKS(200));
+    	num1 = (uint8)CAN1->RF0R & 0x8;
+    	num2 = (uint8)CAN1->RF0R & 16;
+    	u_counterTask2 ++;
+    	counterFull += num1;
+    	counterOverrun += num2;
+
+    	vTaskDelay(pdMS_TO_TICKS(5));
     }
 
     vTaskDelete(NULL);
@@ -225,6 +227,7 @@ void vTaskComRx(void *pvParameters)
 void vTaskComTx(void *pvParameters)
 {
 	uint8 retVal, i;
+	uint32 u_notifiedValue;
 	retVal = CAN_v_InitTimers();
 
 	if(retVal != 0)
@@ -241,7 +244,7 @@ void vTaskComTx(void *pvParameters)
     	{
     		if(u_notifiedValue & (1u << i))
     		{
-    			CAN_u_TransmitMessage(CAN1, &MessageCfg[i].CanTxHandle, MessageCfg[i].CanTxHandle.DLC, MessageCfg[i].CanTxHandle.Data);
+    			CAN_v_TransmitMessage(CAN1, &MessageCfg[i].CanTxHandle);
     		}
     	}
     }

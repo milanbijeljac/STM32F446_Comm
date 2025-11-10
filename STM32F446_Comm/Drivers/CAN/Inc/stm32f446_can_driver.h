@@ -33,7 +33,7 @@ typedef struct
 {
 	uint32 canId[6];	/** CAN ID */
     uint8  Data[6][8];	/** Received data */
-	uint8  DLC[6];		/* Data length code */
+	uint8  DLC[6];		/** Data length code */
 }CANx_RxHandle_t;
 
 /* **************************************************
@@ -68,16 +68,6 @@ void CAN_v_FiltersInit(CAN_TypeDef* CANx);
  * \globals    - TODO
  *
  */
-uint8 CAN_u_RecieveMessage(CAN_TypeDef* CANx, CANx_RxHandle_t* CANx_RecieveHandle, uint8* sizeOfFifo0, uint8* sizeOfFifo1);
-
-/**
- *
- * \brief      - TODO
- * \param[in]  - TODO
- * \return     - TODO
- * \globals    - TODO
- *
- */
-uint8 CAN_u_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle, uint8 DLC, uint8* Data);
+void CAN_v_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle);
 
 #endif /* CAN_INC_STM32F446_CAN_DRIVER_H_ */

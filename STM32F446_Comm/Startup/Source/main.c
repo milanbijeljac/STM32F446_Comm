@@ -180,8 +180,8 @@ static uint8 CAN_v_InitTimers(void)
 
 static void CanRx_v_InitQueue(void)
 {
-	/* In total 32 messages can be stored */
-	xQueueCanRx = xQueueCreate(32, sizeof(CANx_RxHandle_t));
+	/* In total 64 messages can be stored */
+	xQueueCanRx = xQueueCreate(64, sizeof(CANx_RxHandle_t));
 	configASSERT(xQueueCanRx != NULL);
 }
 
@@ -215,21 +215,30 @@ void vTaskUartRx(void *pvParameters)
     vTaskDelete(NULL);
 }
 
+volatile uint8 testVar = 10;
+
 void vTaskUartTx(void *pvParameters)
 {
+	static CANx_RxHandle_t CanRxMessage;
+
     while (1)
     {
-    	UART_Write_Message("First message in cycle cycle cycle ...\n", 200);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    	if(xQueueReceive(xQueueCanRx, &CanRxMessage, portMAX_DELAY) == pdPASS && testVar == 10)
+    	{
+    		UART_Write_Message((uint8*)&CanRxMessage, sizeof(CANx_RxHandle_t));
+    	}
     }
 
     vTaskDelete(NULL);
 }
 
+UBaseType_t retValQueue;
+
 void vTaskComRx(void *pvParameters)
 {
 	/* TODO: Clean - test Variables */
 	uint8 num1, num2;
+
     while (1)
     {
     	num1 = (uint8)CAN1->RF0R & 0x8;
@@ -237,8 +246,8 @@ void vTaskComRx(void *pvParameters)
     	u_counterTask2 ++;
     	counterFull += num1;
     	counterOverrun += num2;
-
-    	vTaskDelay(pdMS_TO_TICKS(5));
+    	retValQueue = uxQueueSpacesAvailable(xQueueCanRx);
+    	vTaskDelay(pdMS_TO_TICKS(10));
     }
 
     vTaskDelete(NULL);

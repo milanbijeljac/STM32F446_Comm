@@ -16,18 +16,18 @@
 /**
  *
  * \brief      - Helper function used to send one byte of data via direct interface to UART peripheral
- * \param[in]  - char ch - one character
+ * \param[in]  - uint8 byte - one byte of data
  * \return     - NONE
  *
  */
-static void UART_v_Write(char ch);
+static void UART_v_Write(uint8 byte);
 
 /****************************************************/
 
-static void UART_v_Write(char ch)
+static void UART_v_Write(uint8 byte)
 {
     while (!(USART2->SR & USART_SR_TXE));
-    USART2->DR = (ch & 0xFF);
+    USART2->DR = (byte & 0xFF);
 }
 
 void UART_v_Init(uint32 clock, uint32 baudRate)
@@ -43,11 +43,13 @@ void UART_v_Init(uint32 clock, uint32 baudRate)
 }
 
 
-void UART_Write_Message(const char *str, uint8 size)
+void UART_Write_Message(uint8* data, uint8 size)
 {
-    while (*str)
+	uint8 i;
+
+    for (i = 0; i < size; i++)
     {
-    	UART_v_Write(*str++);
+    	UART_v_Write(data[i]);
     }
 }
 

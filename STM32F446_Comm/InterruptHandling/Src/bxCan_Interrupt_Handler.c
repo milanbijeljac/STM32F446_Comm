@@ -23,7 +23,8 @@
 uint32 counterRx0 = 0, counterRx1 = 0;
 
 uint8 size1, size2;
-CANx_RxHandle_t CanHndlRecieve;
+CANx_RxHandle_t CanHndlRecieveFifo0;
+CANx_RxHandle_t CanHndlRecieveFifo1;
 
 extern QueueHandle_t xQueueCanRx;
 
@@ -48,29 +49,32 @@ void CAN1_RX0_IRQHandler(void)
 		/* Check if it's CAN 2.0A or 2.0B ID */
 		if( (CAN1->sFIFOMailBox[0].RIR) & (CAN_RI0R_IDE_Msk) )
 		{
-			CanHndlRecieve.canId = (CAN1->sFIFOMailBox[0].RIR >> 3u) & 0x1FFFFFFF;
+			CanHndlRecieveFifo0.canId = (CAN1->sFIFOMailBox[0].RIR >> 3u) & 0x1FFFFFFF;
 		}
 		else
 		{
-			CanHndlRecieve.canId = (CAN1->sFIFOMailBox[0].RIR >> 21u) & 0x7FF;
+			CanHndlRecieveFifo0.canId = (CAN1->sFIFOMailBox[0].RIR >> 21u) & 0x7FF;
 		}
 
-		CanHndlRecieve.DLC = CAN1->sFIFOMailBox[0].RDTR & 0xF;
+		CanHndlRecieveFifo0.DLC = CAN1->sFIFOMailBox[0].RDTR & 0xF;
 
 		u_recieveDataLow  = CAN1->sFIFOMailBox[0].RDLR;
 		u_recieveDataHigh = CAN1->sFIFOMailBox[0].RDHR;
 
-		for(j = 0; j < CanHndlRecieve.DLC; j++)
+		for(j = 0; j < CanHndlRecieveFifo0.DLC; j++)
 		{
 			if(j <= 3u)
 			{
-				CanHndlRecieve.Data[j] = (u_recieveDataLow >> (8 * j)) & 0xFFu;
+				CanHndlRecieveFifo0.Data[j] = (u_recieveDataLow >> (8 * j)) & 0xFFu;
 			}
 			else
 			{
-				CanHndlRecieve.Data[j] = (u_recieveDataHigh >> (8 * (j - 4))) & 0xFFu;
+				CanHndlRecieveFifo0.Data[j] = (u_recieveDataHigh >> (8 * (j - 4))) & 0xFFu;
 			}
 		}
+
+		xQueueSendFromISR(xQueueCanRx, &CanHndlRecieveFifo0, &xHigherPriorityTaskWoken);
+
 		/* Release FIFO0 */
 		CAN1->RF0R |= CAN_RF0R_RFOM0;
 	}
@@ -99,29 +103,33 @@ void CAN1_RX1_IRQHandler(void)
 		/* Check if it's CAN 2.0A or 2.0B ID */
 		if( (CAN1->sFIFOMailBox[1].RIR) & (CAN_RI1R_IDE_Msk) )
 		{
-			CanHndlRecieve.canId = (CAN1->sFIFOMailBox[0].RIR >> 3u) & 0x1FFFFFF;
+			CanHndlRecieveFifo1.canId = (CAN1->sFIFOMailBox[0].RIR >> 3u) & 0x1FFFFFF;
 		}
 		else
 		{
-			CanHndlRecieve.canId = (CAN1->sFIFOMailBox[0].RIR >> 21u) & 0x7FF;
+			CanHndlRecieveFifo1.canId = (CAN1->sFIFOMailBox[0].RIR >> 21u) & 0x7FF;
 		}
 
-		CanHndlRecieve.DLC = CAN1->sFIFOMailBox[1].RDTR & 0xF;
+		CanHndlRecieveFifo1.DLC = CAN1->sFIFOMailBox[1].RDTR & 0xF;
 
 		u_recieveDataLow  = CAN1->sFIFOMailBox[1].RDLR;
 		u_recieveDataHigh = CAN1->sFIFOMailBox[1].RDHR;
 
-		for(j = 0; j < CanHndlRecieve.DLC; j++)
+		for(j = 0; j < CanHndlRecieveFifo1.DLC; j++)
 		{
 			if(j <= 3u)
 			{
-				CanHndlRecieve.Data[j] = (u_recieveDataLow >> (8 * j)) & 0xFFu;
+				CanHndlRecieveFifo1.Data[j] = (u_recieveDataLow >> (8 * j)) & 0xFFu;
 			}
 			else
 			{
-				CanHndlRecieve.Data[j] = (u_recieveDataHigh >> (8 * (j - 4))) & 0xFFu;
+				CanHndlRecieveFifo1.Data[j] = (u_recieveDataHigh >> (8 * (j - 4))) & 0xFFu;
 			}
 		}
+
+		/* Send data to queue */
+		xQueueSendFromISR(xQueueCanRx, &CanHndlRecieveFifo1, &xHigherPriorityTaskWoken);
+
 		/* Release FIFO1 */
 		CAN1->RF1R |= CAN_RF1R_RFOM1;
 	}

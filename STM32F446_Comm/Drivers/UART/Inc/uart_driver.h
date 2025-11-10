@@ -25,13 +25,13 @@ void UART_v_Init(uint32 clock, uint32 baudRate);
 /**
  *
  * \brief      - Function that is used for sending messages over UART
- * \param[in]  - const char *str - pointer to string that holds message
- * \param[in]  - uint8 size - size of message
+ * \param[in]  - uint8* data - pointer to data
+ * \param[in]  - uint8 size - size of data
  * \return     - NONE
  * \globals    - NONE
  *
  */
-void UART_Write_Message(const char *str, uint8 size);
+void UART_Write_Message(uint8* message, uint8 size);
 
 
 

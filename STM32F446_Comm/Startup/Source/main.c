@@ -25,6 +25,7 @@
 #include <stm32f4xx.h>
 #include <FreeRTOS.h>
 #include <task.h>
+#include <queue.h>
 #include <timers.h>
 #include "types.h"
 #include "sys_clock.h"
@@ -71,6 +72,16 @@ static uint8 CAN_v_InitTimers(void);
  */
 static void vCanTxTimerCallback (TimerHandle_t xCanTImer);
 
+/**
+ *
+ * \brief      - Function used to initialize CAN Rx queue.
+ * \param[in]  - NONE
+ * \return     - NONE
+ * \globals    - TODO
+ *
+ */
+static void CanRx_v_InitQueue(void);
+
 /* **************************************************
  *			    GLOBAL VARIABLES 					*
  *************************************************  */
@@ -83,6 +94,7 @@ uint8 countFail = 0u;
 
 TimerHandle_t xTimersCan[NUMBER_OF_MESSAGES];
 TaskHandle_t canTxTaskHandle;
+QueueHandle_t xQueueCanRx;
 
 extern Message_Cfg_t MessageCfg[5];
 /* TODO: Clean -  Test variables */
@@ -141,14 +153,6 @@ static void GPIO_Config(void)
    GPIOA->AFR[0] |=  (7 << (4 * 2)) | (7 << (4 * 3));
 }
 
-void vCanTxTimerCallback(TimerHandle_t xTimer)
-{
-    uint32 msgIndex = (uint32)pvTimerGetTimerID(xTimer);
-
-    /* Notify CAN TX task that timer expired, set corresponding bits to 1 */
-    /* configTASK_NOTIFICATION_ARRAY_ENTRIES is not configured (is 1, so there is no uint32 arr[x]), and we have one 32 bit value for 32 different evens for every task */
-    xTaskNotify(canTxTaskHandle, (1U << msgIndex), eSetBits);
-}
 static uint8 CAN_v_InitTimers(void)
 {
 	uint8  i;
@@ -172,6 +176,22 @@ static uint8 CAN_v_InitTimers(void)
 		}
 	}
 	return 0;
+}
+
+static void CanRx_v_InitQueue(void)
+{
+	/* In total 32 messages can be stored */
+	xQueueCanRx = xQueueCreate(32, sizeof(CANx_RxHandle_t));
+	configASSERT(xQueueCanRx != NULL);
+}
+
+void vCanTxTimerCallback(TimerHandle_t xTimer)
+{
+    uint32 msgIndex = (uint32)pvTimerGetTimerID(xTimer);
+
+    /* Notify CAN TX task that timer expired, set corresponding bits to 1 */
+    /* configTASK_NOTIFICATION_ARRAY_ENTRIES is not configured (is 1, so there is no uint32 arr[x]), and we have one 32 bit value for 32 different evens for every task */
+    xTaskNotify(canTxTaskHandle, (1U << msgIndex), eSetBits);
 }
 
 void vTaskIdle(void *pvParameters)
@@ -260,6 +280,7 @@ int main(void)
 	CAN_v_Init(CAN1);
 	CAN_v_FiltersInit(CAN1);
 	UART_v_Init(SystemCoreClock, 115200);
+	CanRx_v_InitQueue();
 	xTaskCreate(vTaskComTx , "Com Tx task"   , 128, NULL, configMAX_PRIORITIES - 1, &canTxTaskHandle);
 	xTaskCreate(vTaskComRx , "Com Rx task"   , 128, NULL, configMAX_PRIORITIES - 1, NULL);
 	xTaskCreate(vTaskUartTx, "UART Tx task " , 128, NULL, configMAX_PRIORITIES - 2, NULL);

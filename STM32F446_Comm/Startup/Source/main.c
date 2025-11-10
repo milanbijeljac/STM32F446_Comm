@@ -215,17 +215,16 @@ void vTaskUartRx(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-volatile uint8 testVar = 10;
-
 void vTaskUartTx(void *pvParameters)
 {
 	static CANx_RxHandle_t CanRxMessage;
 
     while (1)
     {
-    	if(xQueueReceive(xQueueCanRx, &CanRxMessage, portMAX_DELAY) == pdPASS && testVar == 10)
+    	u_counterTask2 ++;
+    	if(xQueueReceive(xQueueCanRx, &CanRxMessage, portMAX_DELAY) == pdPASS)
     	{
-    		UART_Write_Message((uint8*)&CanRxMessage, sizeof(CANx_RxHandle_t));
+    		UART_Write_Message((const char*)&CanRxMessage, sizeof(CanRxMessage));
     	}
     }
 
@@ -243,7 +242,7 @@ void vTaskComRx(void *pvParameters)
     {
     	num1 = (uint8)CAN1->RF0R & 0x8;
     	num2 = (uint8)CAN1->RF0R & 16;
-    	u_counterTask2 ++;
+
     	counterFull += num1;
     	counterOverrun += num2;
     	retValQueue = uxQueueSpacesAvailable(xQueueCanRx);
@@ -277,7 +276,6 @@ void vTaskComTx(void *pvParameters)
     		}
     	}
     }
-
     vTaskDelete(NULL);
 }
 

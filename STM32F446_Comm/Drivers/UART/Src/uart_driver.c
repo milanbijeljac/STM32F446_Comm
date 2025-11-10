@@ -27,7 +27,7 @@ static void UART_v_Write(uint8 byte);
 static void UART_v_Write(uint8 byte)
 {
     while (!(USART2->SR & USART_SR_TXE));
-    USART2->DR = (byte & 0xFF);
+    USART2->DR = byte;
 }
 
 void UART_v_Init(uint32 clock, uint32 baudRate)

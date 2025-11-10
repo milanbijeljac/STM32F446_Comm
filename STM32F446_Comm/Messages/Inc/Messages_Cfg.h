@@ -11,7 +11,7 @@
  *					DEFINES 					    *
  *************************************************  */
 
-#define NUMBER_OF_MESSAGES 11u
+#define NUMBER_OF_MESSAGES 6u
 
 /* **************************************************
  *			    GLOBAL VARIABLES 					*

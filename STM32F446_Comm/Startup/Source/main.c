@@ -215,16 +215,19 @@ void vTaskUartRx(void *pvParameters)
     vTaskDelete(NULL);
 }
 
+static CANx_RxHandle_t CanRxMessage;
+
 void vTaskUartTx(void *pvParameters)
 {
-	static CANx_RxHandle_t CanRxMessage;
 
     while (1)
     {
-    	u_counterTask2 ++;
     	if(xQueueReceive(xQueueCanRx, &CanRxMessage, portMAX_DELAY) == pdPASS)
     	{
-    		UART_Write_Message((const char*)&CanRxMessage, sizeof(CanRxMessage));
+    		CanRxMessage.SOF = 0xDE;
+    		CanRxMessage.EOF = 0xAD;
+    		UART_v_Write_Message((uint8*)&CanRxMessage, sizeof(CANx_RxHandle_t));
+    		u_counterTask2++;
     	}
     }
 

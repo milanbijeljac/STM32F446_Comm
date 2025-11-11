@@ -29,11 +29,13 @@ typedef struct
 }CANx_TxHandle_t;
 
 /** Structure for receiving CAN messages */
-typedef struct
+typedef struct __attribute__((packed))
 {
+	uint8  SOF;
 	uint32 canId;	/** CAN ID */  /* TODO: canID is 29 bits and DLC is 3, this can be combined to save some space if needed */
     uint8  Data[8];	/** Received data */
 	uint8  DLC;		/** Data length code */
+	uint8  EOF;
 }CANx_RxHandle_t;
 
 /* **************************************************

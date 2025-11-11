@@ -31,7 +31,7 @@ void UART_v_Init(uint32 clock, uint32 baudRate);
  * \globals    - NONE
  *
  */
-void UART_Write_Message(uint8* message, uint8 size);
+void UART_v_Write_Message(uint8* data, uint8 size);
 
 
 

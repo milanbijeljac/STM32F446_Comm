@@ -13,23 +13,6 @@
  *			    FUNCTION PROTOTYPES					*
  *************************************************  */
 
-/**
- *
- * \brief      - Helper function used to send one byte of data via direct interface to UART peripheral
- * \param[in]  - uint8 byte - one byte of data
- * \return     - NONE
- *
- */
-static void UART_v_Write(uint8 byte);
-
-/****************************************************/
-
-static void UART_v_Write(uint8 byte)
-{
-    while (!(USART2->SR & USART_SR_TXE));
-    USART2->DR = byte;
-}
-
 void UART_v_Init(uint32 clock, uint32 baudRate)
 {
     /* Clock initialization */
@@ -43,13 +26,14 @@ void UART_v_Init(uint32 clock, uint32 baudRate)
 }
 
 
-void UART_Write_Message(uint8* data, uint8 size)
+void UART_v_Write_Message(uint8* data, uint8 size)
 {
 	uint8 i;
 
     for (i = 0; i < size; i++)
     {
-    	UART_v_Write(data[i]);
+    	 while (!(USART2->SR & USART_SR_TXE));
+    	 USART2->DR = data[i];
     }
 }
 

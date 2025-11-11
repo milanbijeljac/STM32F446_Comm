@@ -103,11 +103,11 @@ void CAN1_RX1_IRQHandler(void)
 		/* Check if it's CAN 2.0A or 2.0B ID */
 		if( (CAN1->sFIFOMailBox[1].RIR) & (CAN_RI1R_IDE_Msk) )
 		{
-			CanHndlRecieveFifo1.canId = (CAN1->sFIFOMailBox[0].RIR >> 3u) & 0x1FFFFFF;
+			CanHndlRecieveFifo1.canId = (CAN1->sFIFOMailBox[1].RIR >> 3u) & 0x1FFFFFFF;
 		}
 		else
 		{
-			CanHndlRecieveFifo1.canId = (CAN1->sFIFOMailBox[0].RIR >> 21u) & 0x7FF;
+			CanHndlRecieveFifo1.canId = (CAN1->sFIFOMailBox[1].RIR >> 21u) & 0x7FF;
 		}
 
 		CanHndlRecieveFifo1.DLC = CAN1->sFIFOMailBox[1].RDTR & 0xF;

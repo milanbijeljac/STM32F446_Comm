@@ -4,7 +4,6 @@
 /* **************************************************
  *			    	INCLUDES					    *
  *************************************************  */
-#include <math.h>
 #include <types.h>
 #include <stm32f446xx.h>
 
@@ -61,7 +60,7 @@
 
 #define CLEAR_1_BIT					1u
 #define CLEAR_2_BITS 				3u
-#define CLEAR_4_BITS				4u
+#define CLEAR_4_BITS				0xFu
 
 /* Macro that represents value of last GPIOx PIN */
 

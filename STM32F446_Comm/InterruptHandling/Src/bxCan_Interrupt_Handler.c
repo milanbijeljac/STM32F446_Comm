@@ -91,7 +91,7 @@ void CAN1_RX1_IRQHandler(void)
 	uint32 u_recieveDataHigh = 0;
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-	if( !(CAN1->RF0R & CAN_RF0R_FMP0) && !(CAN1->RF1R & CAN_RF1R_FMP1) )
+	if( !(CAN1->RF1R & CAN_RF1R_FMP1) )
 	{
 		/* TODO: Remote frame handling. If this is scaled with CAN-FD and different STM32, no need for this kind of handling */
 	}

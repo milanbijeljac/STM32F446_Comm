@@ -46,13 +46,29 @@ void CAN_v_Init(CAN_TypeDef* CANx)
 
 	/* Enable interrupt for CANx FIFO0 */
 	CANx->IER |= CAN_IER_FMPIE0_Msk;
-	NVIC_EnableIRQ(CAN1_RX0_IRQn);
-	NVIC_SetPriority(CAN1_RX0_IRQn, 5);
+	if(CANx == CAN1)
+	{
+		NVIC_EnableIRQ(CAN1_RX0_IRQn);
+		NVIC_SetPriority(CAN1_RX0_IRQn, 5);
+	}
+	else
+	{
+		NVIC_EnableIRQ(CAN2_RX0_IRQn);
+		NVIC_SetPriority(CAN2_RX0_IRQn, 5);
+	}
 
 	/* Enable interrupt for CANx FIFO1 */
 	CANx->IER |= CAN_IER_FMPIE1_Msk;
-	NVIC_EnableIRQ(CAN1_RX1_IRQn);
-	NVIC_SetPriority(CAN1_RX1_IRQn, 5);
+	if(CANx == CAN1)
+	{
+		NVIC_EnableIRQ(CAN1_RX1_IRQn);
+		NVIC_SetPriority(CAN1_RX1_IRQn, 5);
+	}
+	else
+	{
+		NVIC_EnableIRQ(CAN2_RX1_IRQn);
+		NVIC_SetPriority(CAN2_RX1_IRQn, 5);
+	}
 
 	/* Exit initialization mode */
 	CANx->MCR &= ~CAN_MCR_INRQ;
@@ -87,7 +103,7 @@ void CAN_v_FiltersInit(CAN_TypeDef* CANx)
     CANx->FMR &= ~CAN_FMR_FINIT;
 }
 
-void CAN_v_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle)
+RetVal CAN_v_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle)
 {
 	uint8 i = 0xFFu;
 	uint8 j;
@@ -100,20 +116,23 @@ void CAN_v_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle)
 		i = 0;
 	}
 	else if(CANx->TSR & (1u << CAN_TSR_TME1_Pos) )
-    {
+	{
 		i = 1;
-    }
+	}
 	else if(CANx->TSR & (1u << CAN_TSR_TME2_Pos) )
 	{
 		i = 2;
 	}
 	else
 	{
-
+		/* No empty mailbox available */
+		return NOK;
 	}
 
-	CAN1->sTxMailBox[i].TIR  = (uint32)0;
-	CAN1->sTxMailBox[i].TDTR = (uint32)0;
+	CANx->sTxMailBox[i].TIR  = (uint32)0;
+	CANx->sTxMailBox[i].TDTR = (uint32)0;
+	CANx->sTxMailBox[i].TDLR = (uint32)0;
+	CANx->sTxMailBox[i].TDHR = (uint32)0;
 
 	CANx->sTxMailBox[i].TIR |= CANx_Handle->remoteTransmissionRequest << CAN_TI0R_RTR_Pos;
 	CANx->sTxMailBox[i].TIR |= CANx_Handle->identifierExtension << CAN_TI0R_IDE_Pos;
@@ -129,26 +148,21 @@ void CAN_v_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle)
 		CANx->sTxMailBox[i].TIR |= CANx_Handle->identifier << CAN_TI0R_EXID_Pos;
 	}
 
-	/* Empty Mailbox found */
-	if(i != 0xFFu)
+	/* Set data to mailbox */
+	for(j = 0; j < CANx_Handle->DLC; j++)
 	{
-	    CAN1->sTxMailBox[i].TDLR = (uint32)0;
-	    CAN1->sTxMailBox[i].TDHR = (uint32)0;
-
-		/* Set data to empty mailbox */
-		for(j = 0; j < CANx_Handle->DLC; j++)
+		if(j <= 3u)
 		{
-			if(j <= 3u)
-			{
-				CANx->sTxMailBox[i].TDLR |= CANx_Handle->Data[j] << u_shiftLow;
-				u_shiftLow+= 8u;
-			}
-			else
-			{
-				CANx->sTxMailBox[i].TDHR |= CANx_Handle->Data[j] << u_shiftHigh;
-				u_shiftHigh+= 8u;
-			}
+			CANx->sTxMailBox[i].TDLR |= CANx_Handle->Data[j] << u_shiftLow;
+			u_shiftLow+= 8u;
 		}
-		CANx->sTxMailBox[i].TIR |= CAN_TI0R_TXRQ;
+		else
+		{
+			CANx->sTxMailBox[i].TDHR |= CANx_Handle->Data[j] << u_shiftHigh;
+			u_shiftHigh+= 8u;
+		}
 	}
+	CANx->sTxMailBox[i].TIR |= CAN_TI0R_TXRQ;
+
+	return OK;
 }

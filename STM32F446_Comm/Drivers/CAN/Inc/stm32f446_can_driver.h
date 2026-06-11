@@ -70,6 +70,6 @@ void CAN_v_FiltersInit(CAN_TypeDef* CANx);
  * \globals    - TODO
  *
  */
-void CAN_v_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle);
+RetVal CAN_v_TransmitMessage(CAN_TypeDef* CANx, CANx_TxHandle_t* CANx_Handle);
 
 #endif /* CAN_INC_STM32F446_CAN_DRIVER_H_ */

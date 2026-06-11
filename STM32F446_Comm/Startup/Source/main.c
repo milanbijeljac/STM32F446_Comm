@@ -96,7 +96,7 @@ TimerHandle_t xTimersCan[NUMBER_OF_MESSAGES];
 TaskHandle_t canTxTaskHandle;
 QueueHandle_t xQueueCanRx;
 
-extern Message_Cfg_t MessageCfg[5];
+extern Message_Cfg_t MessageCfg[NUMBER_OF_MESSAGES];
 /* TODO: Clean -  Test variables */
 uint32 counterFull, counterOverrun;
 

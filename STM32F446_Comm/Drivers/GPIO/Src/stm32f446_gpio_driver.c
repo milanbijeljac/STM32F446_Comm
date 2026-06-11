@@ -216,7 +216,7 @@ void GPIOx_v_ModeConfig(GPIO_TypeDef *pGPIOx, GPIO_PinConfig_t GPIO_PinConfigura
 {
 	uint8   u_port;
 	uint8   u_extiBitShift;
-	float_t extiToPinMap;
+	uint8   extiToPinMap;
 
 	/* Perform clear bit operation */
 	pGPIOx->MODER &= ~(CLEAR_2_BITS << (GPIO_PinConfiguration.GPIO_PinNumber * 2));
@@ -265,9 +265,7 @@ void GPIOx_v_ModeConfig(GPIO_TypeDef *pGPIOx, GPIO_PinConfig_t GPIO_PinConfigura
 		u_extiBitShift = GPIO_PinConfiguration.GPIO_PinNumber % 4u;
 		SYSCFG_PLCK_EN();
 
-		extiToPinMap = (uint8)floor((double)extiToPinMap);
-
-		SYSCFG->EXTICR[(uint8)extiToPinMap] = u_port << (u_extiBitShift * 4u);
+		SYSCFG->EXTICR[extiToPinMap] = u_port << (u_extiBitShift * 4u);
 
 		/* Enable the EXTI interrupt delivery using Interrupt Mask Register */
 		EXTI->IMR |= (1 << GPIO_PinConfiguration.GPIO_PinNumber);
@@ -341,7 +339,7 @@ void GPIOx_v_AlternateFunctionConfig(GPIO_TypeDef *pGPIOx, GPIO_PinConfig_t GPIO
 	else if(GPIO_PinConfiguration.GPIO_PinNumber > PIN_SEPARATION)
 	{
 		/* Perform clear bit operation */
-		pGPIOx->AFR[1] &= ~(CLEAR_4_BITS << (GPIO_PinConfiguration.GPIO_PinNumber * 4));
+		pGPIOx->AFR[1] &= ~(CLEAR_4_BITS << ((GPIO_PinConfiguration.GPIO_PinNumber - 8u) * 4));
 		pGPIOx->AFR[1] |= GPIO_PinConfiguration.GPIO_PinAltFunMode << ((GPIO_PinConfiguration.GPIO_PinNumber - 8u) * 4);
 	}
 }
